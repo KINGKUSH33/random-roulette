@@ -7,6 +7,19 @@ const { WebSocketServer } = require('ws');
 const PORT = process.env.PORT || 3000;
 const USERS_FILE = path.join(__dirname, 'data', 'users.json');
 
+// ── Stripe setup ─────────────────────────────
+const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY || '';
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
+let stripe;
+if (STRIPE_SECRET) {
+  stripe = require('stripe')(STRIPE_SECRET);
+}
+const TOKEN_PACKS = {
+  100:  { price: 499,   label: '100 Tokens' },
+  500:  { price: 1999,  label: '500 Tokens' },
+  1500: { price: 4999,  label: '1,500 Tokens' },
+};
+
 // ── Ensure data directory exists ─────────────
 if (!fs.existsSync(path.join(__dirname, 'data'))) {
   fs.mkdirSync(path.join(__dirname, 'data'));
@@ -51,6 +64,40 @@ const MIME = {
 
 const server = http.createServer((req, res) => {
   const urlPath = req.url.split('?')[0];
+
+  // ── Stripe webhook needs raw body (before JSON parsing) ──
+  if (urlPath === '/api/stripe-webhook' && req.method === 'POST') {
+    let rawBody = [];
+    req.on('data', c => { rawBody.push(c); });
+    req.on('end', () => {
+      rawBody = Buffer.concat(rawBody);
+      if (!stripe || !STRIPE_WEBHOOK_SECRET) {
+        res.writeHead(400); return res.end('Stripe not configured');
+      }
+      let event;
+      try {
+        const sig = req.headers['stripe-signature'];
+        event = stripe.webhooks.constructEvent(rawBody, sig, STRIPE_WEBHOOK_SECRET);
+      } catch (err) {
+        res.writeHead(400); return res.end('Webhook signature failed');
+      }
+      if (event.type === 'checkout.session.completed') {
+        const session = event.data.object;
+        const email = (session.metadata || {}).email;
+        const amount = parseInt((session.metadata || {}).tokens, 10);
+        const pack = TOKEN_PACKS[amount];
+        if (email && pack && users[email]) {
+          users[email].tokens += amount;
+          users[email].totalSpent += pack.price / 100;
+          saveUsers();
+          console.log(`Payment: ${email} bought ${amount} tokens`);
+        }
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ received: true }));
+    });
+    return;
+  }
 
   // ── CORS for local dev ─────────────────────
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -139,32 +186,49 @@ const server = http.createServer((req, res) => {
     return res.end(JSON.stringify({ ok: true, user: safe }));
   }
 
-  if (urlPath === '/api/buy-tokens' && req.method === 'POST') {
+  // ── Create Stripe Checkout session ──
+  if (urlPath === '/api/create-checkout' && req.method === 'POST') {
     let body = '';
     req.on('data', c => { body += c; if (body.length > 1e4) req.destroy(); });
-    req.on('end', () => {
+    req.on('end', async () => {
       try {
-        const authToken = (req.headers['authorization'] || '').replace('Bearer ', '');
-        const emailLower = sessions.get(authToken);
+        const authTok = (req.headers['authorization'] || '').replace('Bearer ', '');
+        const emailLower = sessions.get(authTok);
         if (!emailLower || !users[emailLower]) {
           res.writeHead(401, { 'Content-Type': 'application/json' });
           return res.end(JSON.stringify({ error: 'Not logged in' }));
         }
-        const { amount, price } = JSON.parse(body);
-        // In production: verify payment via Stripe/PayPal here before crediting tokens
-        const validPacks = { 100: 4.99, 500: 19.99, 1500: 49.99 };
-        if (!validPacks[amount]) {
+        if (!stripe) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({ error: 'Payments not configured yet' }));
+        }
+        const { amount } = JSON.parse(body);
+        const pack = TOKEN_PACKS[amount];
+        if (!pack) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           return res.end(JSON.stringify({ error: 'Invalid token pack' }));
         }
-        users[emailLower].tokens += amount;
-        users[emailLower].totalSpent += validPacks[amount];
-        saveUsers();
+        const baseUrl = req.headers.origin || ('https://' + req.headers.host);
+        const session = await stripe.checkout.sessions.create({
+          payment_method_types: ['card'],
+          line_items: [{
+            price_data: {
+              currency: 'usd',
+              product_data: { name: pack.label + ' - Random Roulette' },
+              unit_amount: pack.price,
+            },
+            quantity: 1,
+          }],
+          mode: 'payment',
+          success_url: baseUrl + '/?payment=success&tokens=' + amount,
+          cancel_url: baseUrl + '/?payment=cancelled',
+          metadata: { email: emailLower, tokens: String(amount) },
+        });
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true, tokens: users[emailLower].tokens, totalSpent: users[emailLower].totalSpent }));
-      } catch {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Invalid request' }));
+        res.end(JSON.stringify({ ok: true, url: session.url }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Payment setup failed' }));
       }
     });
     return;

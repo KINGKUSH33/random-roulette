@@ -3,7 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Random Roulette - Video Chat</title>
+<title>Random Roulette - Meet People with Video Chat</title>
+<meta name="description" content="Random Roulette — meet new people instantly with live random video chat. Free for girls. Fun, safe, and easy.">
+<meta name="keywords" content="random video chat, video roulette, meet strangers, omegle alternative, chatroulette, live chat">
+<meta property="og:title" content="Random Roulette - Live Video Chat">
+<meta property="og:description" content="Meet new people instantly with random video chat. Girls chat free!">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://random-roulette.onrender.com">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Random Roulette - Live Video Chat">
+<meta name="twitter:description" content="Meet new people instantly with random video chat. Girls chat free!">
+<meta name="theme-color" content="#ff8c00">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -458,6 +468,37 @@ async function doLogin() {
     }
 })();
 
+// Handle return from Stripe Checkout
+(function handlePaymentReturn() {
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get('payment');
+    if (payment === 'success') {
+        const amount = parseInt(params.get('tokens'), 10) || 0;
+        // Refresh user data from server to get updated token count
+        const savedToken = localStorage.getItem('rr_token');
+        if (savedToken) {
+            fetch(API_URL + '/api/me', { headers: { 'Authorization': 'Bearer ' + savedToken } })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.ok) {
+                        localStorage.setItem('rr_user', JSON.stringify(data.user));
+                        tokens = data.user.tokens || 0;
+                        isFreeUser = false;
+                        tokenDisplay.textContent = tokens + ' 🪙';
+                        timerBar.style.display = 'none';
+                        buyBtn.style.display = 'none';
+                        if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+                        addSystemMsg('Payment successful! You got ' + amount + ' tokens! 🎉');
+                    }
+                }).catch(() => {});
+        }
+        // Clean URL
+        window.history.replaceState({}, '', '/');
+    } else if (payment === 'cancelled') {
+        window.history.replaceState({}, '', '/');
+    }
+})();
+
 let appEntered = false;
 function enterApp(user) {
     if (appEntered) return; // guard against double-call
@@ -538,37 +579,26 @@ function openTokenModal() { $('tokenModal').classList.add('show'); }
 function closeTokenModal() { $('tokenModal').classList.remove('show'); }
 
 async function buyTokens(amount) {
-    // In production, integrate a real payment processor here
-    if (authToken) {
-        try {
-            const res = await fetch(API_URL + '/api/buy-tokens', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
-                body: JSON.stringify({ amount })
-            });
-            const data = await res.json();
-            if (!res.ok) { addSystemMsg('Purchase failed: ' + (data.error || 'unknown error')); return; }
-            tokens = data.tokens;
-        } catch {
-            addSystemMsg('Could not reach server. Tokens added locally.');
-            tokens += amount;
-        }
-    } else {
-        tokens += amount;
+    if (!authToken) {
+        addSystemMsg('Please sign up first to buy tokens.');
+        return;
     }
-    isFreeUser = false;
-    tokenDisplay.textContent = tokens + ' 🪙';
-    timerBar.style.display = 'none';
-    buyBtn.style.display = 'none';
-    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-    closeTokenModal();
-    statusEl.textContent = 'Tokens added! You\'re good to chat.';
-    addSystemMsg('You purchased ' + amount + ' tokens!');
-    // Update stored user
-    try { const u = JSON.parse(localStorage.getItem('rr_user') || '{}'); u.tokens = tokens; localStorage.setItem('rr_user', JSON.stringify(u)); } catch {}
-    // Re-enable buttons
-    startBtn.disabled = false;
-    nextBtn.disabled = false;
+    try {
+        const res = await fetch(API_URL + '/api/create-checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+            body: JSON.stringify({ amount })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            addSystemMsg('Purchase error: ' + (data.error || 'unknown'));
+            return;
+        }
+        // Redirect to Stripe Checkout
+        window.location.href = data.url;
+    } catch {
+        addSystemMsg('Could not connect to payment server.');
+    }
 }
 
 function startFreeTimer() {
