@@ -146,6 +146,13 @@ footer{text-align:center;padding:16px;font-size:11px;opacity:.25;position:relati
 .auth-submit{width:100%;padding:13px;border-radius:10px;background:linear-gradient(135deg,var(--orange),#ff6600);color:#111;font-size:15px;font-weight:700;cursor:pointer;border:none;font-family:inherit;margin-top:4px;transition:all .2s}
 .auth-submit:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(255,140,0,.3)}
 .auth-error{color:#ff4444;font-size:12px;margin-bottom:8px;min-height:16px}
+.gender-label{font-size:15px;opacity:.9;margin-bottom:12px;margin-top:14px;font-weight:600}
+.gender-btns-wrap{margin-bottom:14px}
+#loginForm{display:none}
+.invite-footer{margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,.08)}
+.invite-footer p:first-child{font-size:12px;opacity:.4;margin-bottom:8px}
+.invite-footer p:last-child{font-size:11px;opacity:.25}
+#buyBtn{display:none}
 
 /* ── Mobile ─────────────────────────── */
 @media(max-width:860px){
@@ -184,8 +191,8 @@ footer{text-align:center;padding:16px;font-size:11px;opacity:.25;position:relati
             <input id="signupName" class="auth-input" type="text" placeholder="Your display name" maxlength="24" autocomplete="name">
             <input id="signupEmail" class="auth-input" type="email" placeholder="Email address" autocomplete="email">
             <input id="signupPassword" class="auth-input" type="password" placeholder="Create a password" minlength="6" autocomplete="new-password">
-            <p style="font-size:15px;opacity:.9;margin-bottom:12px;margin-top:14px;font-weight:600">I am a...</p>
-            <div class="gender-btns" style="margin-bottom:14px">
+            <p class="gender-label">I am a...</p>
+            <div class="gender-btns gender-btns-wrap">
                 <button class="gender-btn" id="genderMaleBtn" onclick="pickGender('male')">
                     <span class="icon">👨</span> Guy
                     <small>5 min free, then tokens</small>
@@ -196,20 +203,20 @@ footer{text-align:center;padding:16px;font-size:11px;opacity:.25;position:relati
                 </button>
             </div>
             <div id="signupError" class="auth-error"></div>
-            <button class="auth-submit" onclick="doSignup()">Create Account & Start Chatting</button>
+            <button class="auth-submit" id="signupSubmitBtn" onclick="doSignup()">Create Account & Start Chatting</button>
         </div>
 
         <!-- Login Form -->
-        <div id="loginForm" style="display:none">
+        <div id="loginForm">
             <input id="loginEmail" class="auth-input" type="email" placeholder="Email address" autocomplete="email">
             <input id="loginPassword" class="auth-input" type="password" placeholder="Password" autocomplete="current-password">
             <div id="loginError" class="auth-error"></div>
             <button class="auth-submit" onclick="doLogin()">Log In</button>
         </div>
 
-        <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,.08)">
-            <p style="font-size:12px;opacity:.4;margin-bottom:8px">Got an invite link? You're in the right place!</p>
-            <p style="font-size:11px;opacity:.25">Share this page URL to invite friends</p>
+        <div class="invite-footer">
+            <p>Got an invite link? You're in the right place!</p>
+            <p>Share this page URL to invite friends</p>
         </div>
     </div>
 </div>
@@ -257,12 +264,12 @@ footer{text-align:center;padding:16px;font-size:11px;opacity:.25;position:relati
     <div id="videoSection">
         <div id="videos">
             <div class="video-wrap">
-                <video id="localVideo" autoplay muted playsinline></video>
+                <video id="localVideo" autoplay muted></video>
                 <div class="video-overlay" id="localOverlay">Camera off</div>
                 <div class="video-label">You</div>
             </div>
             <div class="video-wrap">
-                <video id="remoteVideo" autoplay playsinline></video>
+                <video id="remoteVideo" autoplay></video>
                 <div class="video-overlay" id="remoteOverlay">Waiting for partner...</div>
                 <div class="video-label partner">Partner</div>
             </div>
@@ -274,7 +281,7 @@ footer{text-align:center;padding:16px;font-size:11px;opacity:.25;position:relati
             <button id="stopBtn" class="btn-stop" disabled>&#9632; Stop</button>
             <button id="muteBtn" class="btn-mute">🎤 Mute</button>
             <button id="inviteBtn" class="btn-invite">📋 Invite</button>
-            <button id="buyBtn" class="btn-tokens" style="display:none">🪙 Get Tokens</button>
+            <button id="buyBtn" class="btn-tokens">🪙 Get Tokens</button>
         </div>
 
         <p id="status">Press Start to begin!</p>
@@ -325,6 +332,7 @@ const API_URL = location.origin;
 // ── DOM ──────────────────────────────────────
 const $ = id => document.getElementById(id);
 const localVideo = $('localVideo'), remoteVideo = $('remoteVideo');
+localVideo.setAttribute('playsinline',''); remoteVideo.setAttribute('playsinline','');
 const startBtn = $('startBtn'), nextBtn = $('nextBtn'), stopBtn = $('stopBtn');
 const muteBtn = $('muteBtn'), inviteBtn = $('inviteBtn'), buyBtn = $('buyBtn');
 const sendBtn = $('sendBtn'), msgInput = $('msgInput');
@@ -357,15 +365,29 @@ function pickGender(g) {
     $('genderMaleBtn').style.background = g === 'male' ? 'rgba(255,140,0,.08)' : 'var(--glass)';
     $('genderFemaleBtn').style.borderColor = g === 'female' ? 'var(--orange)' : 'var(--glass-border)';
     $('genderFemaleBtn').style.background = g === 'female' ? 'rgba(255,140,0,.08)' : 'var(--glass)';
+    // Girls don't need email/password — just a name
+    $('signupEmail').style.display = g === 'female' ? 'none' : '';
+    $('signupPassword').style.display = g === 'female' ? 'none' : '';
+    $('signupSubmitBtn').textContent = g === 'female' ? 'Start Chatting Free! 💜' : 'Create Account & Start Chatting';
 }
 
 async function doSignup() {
     const name = $('signupName').value.trim();
-    const email = $('signupEmail').value.trim();
-    const password = $('signupPassword').value;
     const errEl = $('signupError');
     errEl.textContent = '';
     if (!name) { errEl.textContent = 'Please enter your display name.'; return; }
+
+    // Girls skip signup — enter directly with just a name
+    if (selectedGender === 'female') {
+        const guestUser = { name, gender: 'female', tokens: 0 };
+        localStorage.setItem('rr_user', JSON.stringify(guestUser));
+        enterApp(guestUser);
+        return;
+    }
+
+    // Guys must create an account
+    const email = $('signupEmail').value.trim();
+    const password = $('signupPassword').value;
     if (!email || !email.includes('@')) { errEl.textContent = 'Please enter a valid email.'; return; }
     if (password.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; return; }
     try {
