@@ -68,7 +68,7 @@ header{background:rgba(0,0,0,.7);-webkit-backdrop-filter:blur(16px);backdrop-fil
 #usersStrip::-webkit-scrollbar{height:0}
 .user-thumb{width:42px;height:42px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;position:relative;cursor:pointer;transition:transform .15s;object-fit:cover;border:2px solid rgba(255,255,255,.15)}
 .user-thumb:hover{transform:scale(1.15);border-color:var(--orange)}
-.user-thumb .live-dot{position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;background:var(--green);border:2px solid var(--black)}
+.live-dot{position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;background:var(--green);border:2px solid var(--black)}
 
 /* ── Main Layout ────────────────────── */
 #mainApp{display:none}
@@ -445,7 +445,17 @@ async function doLogin() {
 (async function checkSavedSession() {
     const saved = localStorage.getItem('rr_user');
     const savedToken = localStorage.getItem('rr_token');
-    if (!saved || !savedToken) return;
+    if (!saved) return;
+
+    // Girl guest users have no token — restore directly from cache
+    if (!savedToken) {
+        try {
+            const user = JSON.parse(saved);
+            if (user.gender === 'female') { enterApp(user); return; }
+        } catch {}
+        return;
+    }
+
     try {
         const res = await fetch(API_URL + '/api/me', {
             headers: { 'Authorization': 'Bearer ' + savedToken }
@@ -703,7 +713,7 @@ function connectSignaling() {
 
 async function createPeer() {
     peer = new RTCPeerConnection({ iceServers:[{urls:'stun:stun.l.google.com:19302'}] });
-    localStream.getTracks().forEach(t => peer.addTrack(t, localStream));
+    if (localStream) localStream.getTracks().forEach(t => peer.addTrack(t, localStream));
     peer.onicecandidate = e => { if (e.candidate) ws.send(JSON.stringify({type:'candidate',candidate:e.candidate})); };
     peer.ontrack = e => {
         remoteVideo.srcObject = e.streams[0];
@@ -741,6 +751,7 @@ startBtn.onclick = () => {
 };
 nextBtn.onclick = () => {
     if (!spendToken()) return;
+    if (!localStream) { statusEl.textContent = 'Start your camera first!'; return; }
     cleanup();
     connectSignaling();
     addSystemMsg('Looking for a new partner...');
@@ -935,6 +946,7 @@ function buildUsersStrip() {
 }
 
 // ── Profile Popup ──
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function showUserProfile(user) {
     let existing = document.getElementById('profilePopup');
     if (existing) existing.remove();
@@ -943,10 +955,10 @@ function showUserProfile(user) {
     popup.style.cssText = 'position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.8);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;animation:fadeIn .3s';
     popup.innerHTML = `
         <div style="background:#141414;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:32px;max-width:340px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.7)">
-            <img src="${user.img}" style="width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid var(--orange);margin-bottom:14px" alt="${user.name}">
-            <h3 style="font-size:20px;font-weight:700;margin-bottom:2px">${user.name}</h3>
-            <p style="opacity:.5;font-size:13px;margin-bottom:6px">${user.age} · ${user.city}</p>
-            <p style="font-size:14px;opacity:.7;margin-bottom:18px">${user.bio}</p>
+            <img src="${esc(user.img)}" style="width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid var(--orange);margin-bottom:14px" alt="${esc(user.name)}">
+            <h3 style="font-size:20px;font-weight:700;margin-bottom:2px">${esc(user.name)}</h3>
+            <p style="opacity:.5;font-size:13px;margin-bottom:6px">${esc(String(user.age))} · ${esc(user.city)}</p>
+            <p style="font-size:14px;opacity:.7;margin-bottom:18px">${esc(user.bio)}</p>
             <div style="display:flex;gap:8px;justify-content:center">
                 <button class="popup-close-btn" style="background:rgba(255,255,255,.06);color:#fff;padding:10px 24px;border-radius:10px;border:1px solid rgba(255,255,255,.1)">Close</button>
                 <button class="popup-wave-btn" style="background:var(--orange);color:#111;padding:10px 24px;border-radius:10px">Wave 👋</button>
