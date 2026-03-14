@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Random Roulette — Admin Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--orange:#ff8c00;--green:#00b341;--purple:#9b5de5;--black:#0a0a0a;--glass:rgba(255,255,255,.04);--glass-border:rgba(255,255,255,.08)}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--black);color:#fff;min-height:100vh;padding:24px}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 20% 0%,rgba(255,140,0,.08) 0%,transparent 60%),radial-gradient(ellipse at 80% 100%,rgba(128,0,128,.07) 0%,transparent 50%);pointer-events:none;z-index:0}
+h1{font-size:28px;font-weight:900;margin-bottom:24px;position:relative;z-index:1}
+h1 span{color:var(--orange)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:32px;position:relative;z-index:1}
+.card{background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;padding:24px;text-align:center;backdrop-filter:blur(16px)}
+.card .number{font-size:42px;font-weight:900;margin-bottom:4px}
+.card .label{font-size:13px;opacity:.5;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.card.green .number{color:var(--green)}
+.card.orange .number{color:var(--orange)}
+.card.purple .number{color:var(--purple)}
+.card.blue .number{color:#00bbf9}
+.card.pink .number{color:#ff006e}
+.live-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--green);animation:pulse 1.4s infinite;margin-right:6px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+h2{font-size:20px;font-weight:800;margin-bottom:14px;position:relative;z-index:1}
+h2 span{color:var(--orange)}
+.table-wrap{position:relative;z-index:1;overflow-x:auto;margin-bottom:32px}
+table{width:100%;border-collapse:collapse;background:var(--glass);border:1px solid var(--glass-border);border-radius:14px;overflow:hidden}
+th{background:rgba(255,140,0,.1);color:var(--orange);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:12px 16px;text-align:left}
+td{padding:10px 16px;font-size:13px;border-top:1px solid var(--glass-border)}
+tr:hover td{background:rgba(255,255,255,.02)}
+.gender-m{color:#00bbf9}
+.gender-f{color:#ff006e}
+.badge{display:inline-block;padding:3px 10px;border-radius:8px;font-size:11px;font-weight:700}
+.badge-paid{background:rgba(0,179,65,.15);color:var(--green)}
+.badge-free{background:rgba(155,93,229,.15);color:var(--purple)}
+.refresh-note{font-size:12px;opacity:.3;text-align:center;margin-top:16px;position:relative;z-index:1}
+.back-link{display:inline-block;margin-bottom:16px;color:var(--orange);text-decoration:none;font-size:14px;font-weight:600;position:relative;z-index:1}
+.back-link:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<a href="/" class="back-link">← Back to App</a>
+<h1>📊 Admin <span>Dashboard</span></h1>
+
+<div class="grid">
+    <div class="card green"><div class="number" id="onlineNow"><span class="live-dot"></span>—</div><div class="label">Online Now</div></div>
+    <div class="card blue"><div class="number" id="onlineGuys">—</div><div class="label">👨 Guys Online</div></div>
+    <div class="card pink"><div class="number" id="onlineGirls">—</div><div class="label">👩 Girls Online</div></div>
+    <div class="card orange"><div class="number" id="totalUsers">—</div><div class="label">Total Accounts</div></div>
+    <div class="card blue"><div class="number" id="totalMales">—</div><div class="label">👨 Total Guys</div></div>
+    <div class="card pink"><div class="number" id="totalFemales">—</div><div class="label">👩 Total Girls</div></div>
+    <div class="card green"><div class="number" id="totalRevenue">—</div><div class="label">💰 Revenue</div></div>
+    <div class="card purple"><div class="number" id="totalTokens">—</div><div class="label">🪙 Tokens in Circulation</div></div>
+</div>
+
+<h2>Recent <span>Signups</span></h2>
+<div class="table-wrap">
+<table>
+    <thead><tr><th>Name</th><th>Email</th><th>Gender</th><th>Tokens</th><th>Spent</th><th>Joined</th></tr></thead>
+    <tbody id="usersTable"><tr><td colspan="6" style="text-align:center;opacity:.3">Loading...</td></tr></tbody>
+</table>
+</div>
+
+<p class="refresh-note">Auto-refreshes every 5 seconds</p>
+
+<script>
+const $ = id => document.getElementById(id);
+
+async function loadStats() {
+    try {
+        const res = await fetch('/api/stats');
+        const d = await res.json();
+        $('onlineNow').innerHTML = '<span class="live-dot"></span>' + d.onlineNow;
+        $('onlineGuys').textContent = d.onlineGuys;
+        $('onlineGirls').textContent = d.onlineGirls;
+        $('totalUsers').textContent = d.totalUsers;
+        $('totalMales').textContent = d.totalMales;
+        $('totalFemales').textContent = d.totalFemales;
+        $('totalRevenue').textContent = '$' + d.totalRevenue;
+        $('totalTokens').textContent = d.totalTokensSold.toLocaleString();
+
+        const tbody = $('usersTable');
+        if (d.recentUsers && d.recentUsers.length > 0) {
+            tbody.innerHTML = d.recentUsers.map(u => {
+                const gClass = u.gender === 'female' ? 'gender-f' : 'gender-m';
+                const gIcon = u.gender === 'female' ? '👩' : '👨';
+                const spent = u.totalSpent > 0
+                    ? '<span class="badge badge-paid">$' + u.totalSpent.toFixed(2) + '</span>'
+                    : '<span class="badge badge-free">Free</span>';
+                const ago = timeAgo(u.createdAt);
+                return '<tr>'
+                    + '<td><strong>' + esc(u.name) + '</strong></td>'
+                    + '<td>' + esc(u.email || '—') + '</td>'
+                    + '<td class="' + gClass + '">' + gIcon + ' ' + u.gender + '</td>'
+                    + '<td>' + (u.tokens || 0) + ' 🪙</td>'
+                    + '<td>' + spent + '</td>'
+                    + '<td>' + ago + '</td>'
+                    + '</tr>';
+            }).join('');
+        } else {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;opacity:.3">No users yet</td></tr>';
+        }
+    } catch (e) {
+        console.error('Stats load failed:', e);
+    }
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+function timeAgo(dateStr) {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return mins + 'm ago';
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return hrs + 'h ago';
+    const days = Math.floor(hrs / 24);
+    return days + 'd ago';
+}
+
+loadStats();
+setInterval(loadStats, 5000);
+</script>
+</body>
+</html>

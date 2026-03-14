@@ -56,6 +56,8 @@ header{background:rgba(0,0,0,.7);-webkit-backdrop-filter:blur(16px);backdrop-fil
 .badge-tokens{background:rgba(255,140,0,.15);color:var(--orange);cursor:pointer}
 .badge-tokens:hover{background:rgba(255,140,0,.25)}
 .badge-free{background:rgba(155,93,229,.15);color:var(--purple)}
+.badge-guys{background:rgba(0,187,249,.12);color:#00bbf9}
+.badge-girls{background:rgba(255,0,110,.12);color:#ff006e}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 1.4s infinite}
 
@@ -188,7 +190,7 @@ footer{text-align:center;padding:16px;font-size:11px;opacity:.25;position:relati
     <div class="welcome-card">
         <h1>Random <span>Roulette</span></h1>
         <p>Meet new people instantly with random video chat</p>
-        <div class="online-now"><span class="dot"></span> <span id="welcomeOnline">1,247</span> people online now</div>
+        <div class="online-now"><span class="dot"></span> <span id="welcomeOnline">1,247</span> online &nbsp;·&nbsp; 👨 <span id="welcomeGuys">583</span> &nbsp;·&nbsp; 👩 <span id="welcomeGirls">664</span></div>
 
         <!-- Auth Tabs -->
         <div class="auth-tabs">
@@ -236,6 +238,7 @@ footer{text-align:center;padding:16px;font-size:11px;opacity:.25;position:relati
     <div class="modal-card">
         <h2>Get <span>Tokens</span></h2>
         <p>Your free time is up! Purchase tokens to keep chatting.</p>
+        <p style="font-size:12px;opacity:.4;margin-bottom:16px">💡 Most guys buy 500 tokens — best value for chatting with girls</p>
         <div class="token-options">
             <div class="token-opt" onclick="buyTokens(100)">
                 <div class="info"><strong>100 Tokens</strong><small>~15 min of chat</small></div>
@@ -261,6 +264,8 @@ footer{text-align:center;padding:16px;font-size:11px;opacity:.25;position:relati
     <div class="logo">Random <span>Roulette</span></div>
     <div class="header-right">
         <div class="badge badge-online"><span class="dot"></span> <span id="onlineCount">1,247</span> online</div>
+        <div class="badge badge-guys">👨 <span id="guysCount">583</span></div>
+        <div class="badge badge-girls">👩 <span id="girlsCount">664</span></div>
         <div class="badge badge-tokens" id="tokenBadge" onclick="openTokenModal()">🪙 <span id="tokenDisplay">FREE</span></div>
     </div>
 </header>
@@ -352,6 +357,8 @@ const tokenDisplay = $('tokenDisplay'), tokenBadge = $('tokenBadge');
 const timerBar = $('timerBar'), timerText = $('timerText');
 const localOverlay = $('localOverlay'), remoteOverlay = $('remoteOverlay');
 const welcomeOnline = $('welcomeOnline');
+const guysCountEl = $('guysCount'), girlsCountEl = $('girlsCount');
+const welcomeGuys = $('welcomeGuys'), welcomeGirls = $('welcomeGirls');
 
 // ══════════════════════════════════════════════
 //  AUTH TABS + SIGNUP/LOGIN
@@ -557,7 +564,7 @@ function connectLobbyWs() {
     if (lobbyWs && lobbyWs.readyState <= 1) return; // already connected or connecting
     lobbyWs = new WebSocket(WS_URL);
     lobbyWs.onopen = () => {
-        lobbyWs.send(JSON.stringify({ type: 'register', name: myProfile.name }));
+        lobbyWs.send(JSON.stringify({ type: 'register', name: myProfile.name, gender: userGender }));
     };
     lobbyWs.onmessage = (msg) => {
         let data;
@@ -571,6 +578,15 @@ function connectLobbyWs() {
             const display = Math.max(real, 800 + real * 3);
             onlineCountEl.textContent = display.toLocaleString();
             welcomeOnline.textContent = display.toLocaleString();
+            // Guys/girls counts — inflate proportionally
+            const rg = data.guys || 0, rf = data.girls || 0;
+            const ratio = real > 0 ? display / real : 800;
+            const dg = Math.round(Math.max(rg * ratio, display * 0.42));
+            const df = display - dg;
+            guysCountEl.textContent = dg.toLocaleString();
+            girlsCountEl.textContent = df.toLocaleString();
+            welcomeGuys.textContent = dg.toLocaleString();
+            welcomeGirls.textContent = df.toLocaleString();
         }
     };
     lobbyWs.onclose = () => { lobbyWs = null; setTimeout(connectLobbyWs, 3000); };
@@ -622,6 +638,12 @@ function startFreeTimer() {
         const s = String(freeSecondsLeft % 60).padStart(2, '0');
         timerText.textContent = m + ':' + s;
         tokenDisplay.textContent = 'FREE ' + m + ':' + s;
+
+        // Monetization nudges
+        if (freeSecondsLeft === 180) addSystemMsg('💡 Tip: Buy tokens now to chat without limits!');
+        if (freeSecondsLeft === 120) addSystemMsg('⚡ 2 minutes left! Girls are waiting — grab tokens to keep chatting.');
+        if (freeSecondsLeft === 60) addSystemMsg('⏰ Only 1 minute left! Don\'t lose your spot.');
+        if (freeSecondsLeft === 30) { addSystemMsg('🔥 30 seconds! Get tokens NOW before time runs out!'); openTokenModal(); }
 
         if (freeSecondsLeft <= 60) timerBar.classList.add('warn');
 
@@ -683,7 +705,7 @@ function connectSignaling() {
     ws = new WebSocket(WS_URL);
     ws.onopen = () => {
         statusEl.textContent = 'Looking for a partner...';
-        ws.send(JSON.stringify({ type: 'register', name: myProfile.name }));
+        ws.send(JSON.stringify({ type: 'register', name: myProfile.name, gender: userGender }));
         ws.send(JSON.stringify({ type: 'find' }));
     };
     ws.onerror = () => { statusEl.textContent = 'Cannot reach server — try again.'; };

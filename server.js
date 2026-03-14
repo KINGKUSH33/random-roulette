@@ -235,11 +235,28 @@ const server = http.createServer((req, res) => {
   }
 
   if (urlPath === '/api/stats' && req.method === 'GET') {
-    // Admin stats endpoint — shows total users + revenue
-    const totalUsers = Object.keys(users).length;
-    const totalRevenue = Object.values(users).reduce((sum, u) => sum + (u.totalSpent || 0), 0);
+    const allUsers = Object.values(users);
+    const totalUsers = allUsers.length;
+    const totalMales = allUsers.filter(u => u.gender === 'male').length;
+    const totalFemales = allUsers.filter(u => u.gender === 'female').length;
+    const totalRevenue = allUsers.reduce((sum, u) => sum + (u.totalSpent || 0), 0);
+    const totalTokensSold = allUsers.reduce((sum, u) => sum + (u.tokens || 0), 0);
+    let onlineGuys = 0, onlineGirls = 0;
+    for (const info of clientInfo.values()) {
+      if (info.gender === 'female') onlineGirls++; else onlineGuys++;
+    }
+    const recentUsers = allUsers
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 20)
+      .map(u => ({ name: u.name, email: u.email, gender: u.gender, tokens: u.tokens, totalSpent: u.totalSpent, createdAt: u.createdAt }));
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({ totalUsers, totalRevenue: totalRevenue.toFixed(2), onlineNow: allClients.size }));
+    return res.end(JSON.stringify({
+      totalUsers, totalMales, totalFemales,
+      totalRevenue: totalRevenue.toFixed(2),
+      totalTokensSold,
+      onlineNow: allClients.size, onlineGuys, onlineGirls,
+      recentUsers
+    }));
   }
 
   // ── Serve static files ──────────────────────
@@ -300,10 +317,12 @@ wss.on('connection', (ws) => {
     }
 
     switch (data.type) {
-      // ── User registers with their name ──
+      // ── User registers with their name + gender ──
       case 'register': {
         const name = String(data.name || 'Anon').substring(0, 24);
-        clientInfo.set(ws, { name });
+        const gender = data.gender === 'female' ? 'female' : 'male';
+        clientInfo.set(ws, { name, gender });
+        broadcastOnlineCount();
         break;
       }
 
@@ -390,7 +409,11 @@ function unpair(ws) {
 
 function broadcastOnlineCount() {
   const count = allClients.size;
-  const payload = JSON.stringify({ type: 'online-count', count });
+  let guys = 0, girls = 0;
+  for (const info of clientInfo.values()) {
+    if (info.gender === 'female') girls++; else guys++;
+  }
+  const payload = JSON.stringify({ type: 'online-count', count, guys, girls });
   for (const client of allClients) {
     if (client.readyState === 1) {
       client.send(payload);
