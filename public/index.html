@@ -23,9 +23,19 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--black);color:#fff
 body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 20% 0%,rgba(255,140,0,.08) 0%,transparent 60%),radial-gradient(ellipse at 80% 100%,rgba(128,0,128,.07) 0%,transparent 50%);pointer-events:none;z-index:0}
 
 /* ── Welcome Screen ─────────────────── */
-#welcome{position:fixed;inset:0;z-index:9000;background:var(--black);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:28px;transition:opacity .5s;overflow:hidden}
+#welcome{position:fixed;inset:0;z-index:9000;background:var(--black);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0;transition:opacity .5s;overflow:hidden;overflow-y:auto}
 #welcome.hidden{opacity:0;pointer-events:none}
-.bg-people{position:absolute;border-radius:16px;object-fit:cover;filter:brightness(.35) saturate(.7);opacity:0;animation:bgFade 1.5s ease forwards;box-shadow:0 8px 30px rgba(0,0,0,.6)}
+/* Animated gradient background */
+#welcome::before{content:'';position:fixed;inset:0;background:radial-gradient(circle at 15% 20%,rgba(155,93,229,.18) 0%,transparent 45%),radial-gradient(circle at 85% 80%,rgba(0,179,65,.15) 0%,transparent 45%),radial-gradient(circle at 50% 0%,rgba(255,140,0,.12) 0%,transparent 50%),radial-gradient(circle at 50% 100%,rgba(155,93,229,.1) 0%,transparent 40%);animation:bgShift 8s ease-in-out infinite alternate;z-index:0}
+@keyframes bgShift{0%{filter:hue-rotate(0deg)}100%{filter:hue-rotate(15deg)}}
+/* Floating orbs */
+.orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:.3;animation:orbFloat 10s ease-in-out infinite alternate;z-index:0;pointer-events:none}
+.orb-1{width:350px;height:350px;background:var(--purple);top:-80px;left:-60px;animation-duration:12s}
+.orb-2{width:300px;height:300px;background:var(--orange);bottom:-60px;right:-40px;animation-duration:10s;animation-delay:2s}
+.orb-3{width:250px;height:250px;background:var(--green);top:50%;right:10%;animation-duration:14s;animation-delay:4s}
+.orb-4{width:200px;height:200px;background:var(--purple);bottom:20%;left:8%;animation-duration:11s;animation-delay:1s}
+@keyframes orbFloat{0%{transform:translate(0,0) scale(1)}50%{transform:translate(30px,-20px) scale(1.1)}100%{transform:translate(-20px,30px) scale(.95)}}
+.bg-people{position:absolute;border-radius:16px;object-fit:cover;filter:brightness(.3) saturate(.6);opacity:0;animation:bgFade 2s ease forwards;box-shadow:0 8px 30px rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.06)}
 .bg-people:nth-child(1){width:180px;height:240px;top:8%;left:4%;animation-delay:.2s;transform:rotate(-4deg)}
 .bg-people:nth-child(2){width:160px;height:210px;top:12%;right:5%;animation-delay:.5s;transform:rotate(3deg)}
 .bg-people:nth-child(3){width:170px;height:225px;bottom:10%;left:6%;animation-delay:.8s;transform:rotate(2deg)}
@@ -33,18 +43,40 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .bg-people:nth-child(5){width:140px;height:190px;top:45%;left:2%;animation-delay:.6s;transform:rotate(-2deg)}
 .bg-people:nth-child(6){width:145px;height:195px;top:40%;right:3%;animation-delay:.9s;transform:rotate(4deg)}
 @keyframes bgFade{to{opacity:1}}
-@media(max-width:860px){.bg-people{display:none}}
-.welcome-card{background:rgba(10,10,10,.85);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);border:1px solid var(--glass-border);border-radius:20px;padding:48px 44px;text-align:center;max-width:440px;width:90%;box-shadow:var(--shadow);position:relative;z-index:2}
-.welcome-card h1{font-size:32px;font-weight:900;margin-bottom:6px}
-.welcome-card h1 span{color:var(--orange)}
-.welcome-card p{opacity:.6;font-size:14px;margin-bottom:28px}
-.welcome-card .online-now{display:inline-flex;align-items:center;gap:6px;background:rgba(0,179,65,.15);color:var(--green);padding:6px 16px;border-radius:20px;font-size:13px;font-weight:600;margin-bottom:24px}
-.welcome-card .online-now .dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 1.4s infinite}
+@media(max-width:860px){.bg-people{display:none}.orb{display:none}}
+/* Card with animated gradient border */
+.welcome-card{position:relative;z-index:2;max-width:460px;width:92%;padding:3px;border-radius:22px;background:linear-gradient(135deg,var(--orange),var(--purple),var(--green),var(--orange));background-size:300% 300%;animation:borderGlow 6s ease infinite}
+@keyframes borderGlow{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+.welcome-inner{background:rgba(8,8,8,.94);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);border-radius:20px;padding:44px 40px 36px;text-align:center}
+.welcome-card h1{font-size:36px;font-weight:900;margin-bottom:4px;letter-spacing:-.5px}
+.welcome-card h1 .w-random{color:#fff}
+.welcome-card h1 .w-roulette{background:linear-gradient(135deg,var(--orange),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.welcome-tagline{opacity:.5;font-size:13px;margin-bottom:22px;letter-spacing:.3px}
+/* Stats row */
+.welcome-stats{display:flex;justify-content:center;gap:10px;margin-bottom:24px;flex-wrap:wrap}
+.w-stat{display:flex;align-items:center;gap:6px;padding:7px 16px;border-radius:20px;font-size:13px;font-weight:600}
+.w-stat-online{background:rgba(0,179,65,.12);color:var(--green)}
+.w-stat-guys{background:rgba(0,187,249,.1);color:#00bbf9}
+.w-stat-girls{background:rgba(255,0,110,.1);color:#ff006e}
+.w-stat .dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 1.4s infinite}
+/* Features strip */
+.welcome-features{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:26px}
+.w-feat{display:flex;align-items:center;gap:5px;padding:6px 14px;border-radius:10px;font-size:12px;font-weight:600;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03)}
+.w-feat-green{color:var(--green);border-color:rgba(0,179,65,.2)}
+.w-feat-orange{color:var(--orange);border-color:rgba(255,140,0,.2)}
+.w-feat-purple{color:var(--purple);border-color:rgba(155,93,229,.2)}
+/* Gender buttons */
 .gender-btns{display:flex;gap:14px;justify-content:center}
-.gender-btn{padding:16px 32px;border:2px solid var(--glass-border);border-radius:14px;background:var(--glass);color:#fff;font-size:16px;font-weight:700;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:130px}
-.gender-btn:hover{border-color:var(--orange);background:rgba(255,140,0,.08);transform:translateY(-2px)}
-.gender-btn .icon{font-size:32px}
-.gender-btn small{font-size:11px;opacity:.5;font-weight:400}
+.gender-btn{padding:18px 28px;border:2px solid var(--glass-border);border-radius:16px;background:var(--glass);color:#fff;font-size:16px;font-weight:700;cursor:pointer;transition:all .25s;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:135px;position:relative;overflow:hidden}
+.gender-btn::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity .25s;border-radius:14px}
+#genderMaleBtn::before{background:linear-gradient(135deg,rgba(0,187,249,.12),rgba(155,93,229,.08))}
+#genderFemaleBtn::before{background:linear-gradient(135deg,rgba(255,0,110,.12),rgba(155,93,229,.08))}
+.gender-btn:hover::before{opacity:1}
+#genderMaleBtn:hover{border-color:#00bbf9;transform:translateY(-3px);box-shadow:0 8px 25px rgba(0,187,249,.2)}
+#genderFemaleBtn:hover{border-color:#ff006e;transform:translateY(-3px);box-shadow:0 8px 25px rgba(255,0,110,.2)}
+.gender-btn .icon{font-size:34px;position:relative;z-index:1}
+.gender-btn span:not(.icon){position:relative;z-index:1}
+.gender-btn small{font-size:11px;opacity:.5;font-weight:400;position:relative;z-index:1}
 
 /* ── Header ─────────────────────────── */
 header{background:rgba(0,0,0,.7);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);padding:12px 24px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100;border-bottom:1px solid var(--glass-border)}
@@ -149,14 +181,14 @@ button:disabled{opacity:.35;cursor:default;transform:none}
 footer{text-align:center;padding:16px;font-size:11px;opacity:.25;position:relative;z-index:1}
 
 /* ── Auth Forms ─────────────────────── */
-.auth-tabs{display:flex;gap:0;margin-bottom:20px;border-radius:10px;overflow:hidden;border:1px solid var(--glass-border)}
-.auth-tab{flex:1;padding:10px;text-align:center;font-weight:600;font-size:14px;cursor:pointer;background:transparent;color:rgba(255,255,255,.4);border:none;font-family:inherit;transition:all .2s}
-.auth-tab.active{background:var(--orange);color:#111}
+.auth-tabs{display:flex;gap:0;margin-bottom:20px;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03)}
+.auth-tab{flex:1;padding:11px;text-align:center;font-weight:600;font-size:14px;cursor:pointer;background:transparent;color:rgba(255,255,255,.35);border:none;font-family:inherit;transition:all .25s}
+.auth-tab.active{background:linear-gradient(135deg,var(--orange),#ff6600);color:#111;box-shadow:0 2px 12px rgba(255,140,0,.25)}
 .auth-input{width:100%;padding:11px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#fff;font-size:14px;font-family:inherit;outline:none;margin-bottom:10px}
 .auth-input::placeholder{color:rgba(255,255,255,.25)}
 .auth-input:focus{border-color:var(--orange)}
-.auth-submit{width:100%;padding:13px;border-radius:10px;background:linear-gradient(135deg,var(--orange),#ff6600);color:#111;font-size:15px;font-weight:700;cursor:pointer;border:none;font-family:inherit;margin-top:4px;transition:all .2s}
-.auth-submit:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(255,140,0,.3)}
+.auth-submit{width:100%;padding:14px;border-radius:12px;background:linear-gradient(135deg,var(--orange),#ff6600);color:#111;font-size:15px;font-weight:700;cursor:pointer;border:none;font-family:inherit;margin-top:4px;transition:all .25s;letter-spacing:.3px}
+.auth-submit:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(255,140,0,.35)}
 .auth-error{color:#ff4444;font-size:12px;margin-bottom:8px;min-height:16px}
 .gender-label{font-size:15px;opacity:.9;margin-bottom:12px;margin-top:14px;font-weight:600}
 .gender-btns-wrap{margin-bottom:14px}
@@ -172,7 +204,8 @@ footer{text-align:center;padding:16px;font-size:11px;opacity:.25;position:relati
     #chat{width:100%;max-width:420px;height:340px}
     .video-wrap video{width:300px;height:225px}
     #usersStrip{padding:10px 12px}
-    .welcome-card{padding:32px 24px}
+    .welcome-card{padding:2px;max-width:380px}
+    .welcome-inner{padding:28px 20px 24px}
 }
 </style>
 </head>
@@ -180,6 +213,11 @@ footer{text-align:center;padding:16px;font-size:11px;opacity:.25;position:relati
 
 <!-- ══════════ WELCOME / GENDER SELECT ══════════ -->
 <div id="welcome">
+    <!-- Floating color orbs -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="orb orb-4"></div>
     <!-- Background people photos -->
     <img class="bg-people" src="https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?w=400&q=70&fit=crop" alt="">
     <img class="bg-people" src="https://images.unsplash.com/photo-1522543558187-768b6df7c25c?w=400&q=70&fit=crop" alt="">
@@ -188,9 +226,23 @@ footer{text-align:center;padding:16px;font-size:11px;opacity:.25;position:relati
     <img class="bg-people" src="https://images.unsplash.com/photo-1543807535-eceef0bc6599?w=400&q=70&fit=crop" alt="">
     <img class="bg-people" src="https://images.unsplash.com/photo-1511988617509-a57c8a288659?w=400&q=70&fit=crop" alt="">
     <div class="welcome-card">
-        <h1>Random <span>Roulette</span></h1>
-        <p>Meet new people instantly with random video chat</p>
-        <div class="online-now"><span class="dot"></span> <span id="welcomeOnline">1,247</span> online &nbsp;·&nbsp; 👨 <span id="welcomeGuys">583</span> &nbsp;·&nbsp; 👩 <span id="welcomeGirls">664</span></div>
+      <div class="welcome-inner">
+        <h1><span class="w-random">Random</span> <span class="w-roulette">Roulette</span></h1>
+        <p class="welcome-tagline">Meet new people instantly with live random video chat</p>
+
+        <!-- Stats row -->
+        <div class="welcome-stats">
+            <div class="w-stat w-stat-online"><span class="dot"></span> <span id="welcomeOnline">1,247</span> online</div>
+            <div class="w-stat w-stat-guys">👨 <span id="welcomeGuys">583</span></div>
+            <div class="w-stat w-stat-girls">👩 <span id="welcomeGirls">664</span></div>
+        </div>
+
+        <!-- Feature highlights -->
+        <div class="welcome-features">
+            <div class="w-feat w-feat-green">✅ Girls chat free</div>
+            <div class="w-feat w-feat-orange">🎥 Live video</div>
+            <div class="w-feat w-feat-purple">🌍 Meet worldwide</div>
+        </div>
 
         <!-- Auth Tabs -->
         <div class="auth-tabs">
@@ -230,6 +282,7 @@ footer{text-align:center;padding:16px;font-size:11px;opacity:.25;position:relati
             <p>Got an invite link? You're in the right place!</p>
             <p>Share this page URL to invite friends</p>
         </div>
+      </div>
     </div>
 </div>
 
