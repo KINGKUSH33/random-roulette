@@ -1,16 +1,12 @@
 {
-  "name": "random-roulette",
+  "name": "my-app",
   "version": "1.0.0",
-  "description": "Random Roulette - Video Chat App",
+  "description": "",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+    "start": "node server.js"
   },
-  "dependencies": {
-    "stripe": "^14.0.0",
-    "ws": "^8.16.0"
-  },
+  "dependencies": {},
   "engines": {
     "node": ">=18.0.0"
   }
